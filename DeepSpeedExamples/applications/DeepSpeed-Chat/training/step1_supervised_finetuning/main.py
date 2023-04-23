@@ -42,6 +42,7 @@ def parse_args():
                         help='Path to the training dataset. Accepted format:'
                         '1) a single data path, 2) multiple datasets in the'
                         'form: dataset1-path dataset2-path ...')
+    # TODO: 我不理解 2,4,4 怎么就变成了 60%, 20%, 20% 的划分了. 那么 6,2,2 又是什么意思呢?
     parser.add_argument('--data_split',
                         type=str,
                         default='6,2,2',
@@ -68,6 +69,7 @@ def parse_args():
         "Path to pretrained model or model identifier from huggingface.co/models.",
         required=True,
     )
+    # 下面三个参数可以用来调节显存, 小显存真的伤心
     parser.add_argument(
         "--per_device_train_batch_size",
         type=int,
@@ -97,10 +99,12 @@ def parse_args():
                         type=float,
                         default=0.1,
                         help="Weight decay to use.")
+    # 默认只训练了一轮, 必须加大力度
     parser.add_argument("--num_train_epochs",
                         type=int,
                         default=1,
                         help="Total number of training epochs to perform.")
+    # 默认脚本里 gradient_accumulation_steps 会开到 8, 再加上默认的 train_batch_size 是 16, 就是 128 了
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -135,10 +139,11 @@ def parse_args():
                         type=int,
                         default=-1,
                         help="local_rank for distributed training on gpus")
+    # 这个也可以用来减少显存
     parser.add_argument('--gradient_checkpointing',
                         action='store_true',
                         help='Enable HF gradient checkpointing for model.')
-    # deepspeed features
+    # deepspeed features. 这个应该也可以用来减少显存
     parser.add_argument('--offload',
                         action='store_true',
                         help='Enable ZeRO Offload techniques.')
@@ -166,7 +171,7 @@ def parse_args():
     if args.gradient_checkpointing and args.lora_dim > 0:
         assert (
             not args.only_optimize_lora
-        ), "--gradient_checkpointing and --only_optimizer_lora cannot be enabled at the same time."
+        ), "--gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time."
 
     return args
 
@@ -175,8 +180,10 @@ def main():
     args = parse_args()
 
     if args.local_rank == -1:
+        # 单 GPU
         device = torch.device("cuda")
     else:
+        # 分布式
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
@@ -196,10 +203,12 @@ def main():
     # If passed along, set the training seed now.
     set_random_seed(args.seed)
 
+    # 还不支持这个特性
     assert not args.offload, "zero-offload is not currently supported but coming soon!"
 
     torch.distributed.barrier()
 
+    # 加载分词器
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path,
                                               fast_tokenizer=True)
     tokenizer.pad_token = tokenizer.eos_token
@@ -207,12 +216,14 @@ def main():
     model = create_hf_model(AutoModelForCausalLM, args.model_name_or_path,
                             tokenizer, ds_config)
 
+    # 使用 lora
     if args.lora_dim > 0:
         model = convert_linear_layer_to_lora(model, args.lora_module_name,
                                              args.lora_dim)
         if args.only_optimize_lora:
             model = only_optimize_lora_parameters(model)
 
+    # 当前是第一阶段
     # Prepare the data
     train_phase = 1
     train_dataset, eval_dataset = create_prompt_dataset(
@@ -243,6 +254,9 @@ def main():
                                  batch_size=args.per_device_eval_batch_size)
 
     def evaluation(model, eval_dataloader):
+        """
+        评估的过程
+        """
         model.eval()
         losses = 0
         for step, batch in enumerate(eval_dataloader):
@@ -253,6 +267,7 @@ def main():
             loss = outputs.loss
             losses += loss.float()
         losses = losses / (step + 1)
+        # 这是困惑度
         try:
             perplexity = torch.exp(losses)
         except OverflowError:
@@ -281,6 +296,7 @@ def main():
         num_training_steps=args.num_train_epochs * num_update_steps_per_epoch,
     )
 
+    # deepspeed 初始化
     model, optimizer, _, lr_scheduler = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
@@ -320,6 +336,7 @@ def main():
         print_rank_0(f"ppl: {perplexity}", args.global_rank)
         model.tput_timer.update_epoch_count()
 
+    # 保存模型
     if args.output_dir is not None:
         print_rank_0('saving the final model ...', args.global_rank)
         model = convert_lora_to_linear_layer(model)
