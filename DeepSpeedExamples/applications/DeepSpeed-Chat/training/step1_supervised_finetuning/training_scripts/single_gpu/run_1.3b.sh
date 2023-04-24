@@ -18,4 +18,6 @@ mkdir -p $OUTPUT
 deepspeed --num_gpus 1 main.py --model_name_or_path facebook/opt-1.3b \
    --gradient_accumulation_steps 32 --lora_dim 128 --zero_stage $ZERO_STAGE \
    --per_device_train_batch_size 4 --per_device_eval_batch_size 4 \
+   --num_train_epochs 16 \
+   --data_path Dahoas/rm-static Dahoas/full-hh-rlhf Dahoas/synthetic-instruct-gptj-pairwise yitingxie/rlhf-reward-datasets \
    --deepspeed --output_dir $OUTPUT &> $OUTPUT/training.log
