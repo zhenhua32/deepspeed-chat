@@ -24,5 +24,5 @@ deepspeed main.py \
    --actor_zero_stage $ACTOR_ZERO_STAGE --critic_zero_stage $CRITIC_ZERO_STAGE \
    --num_padding_at_beginning 1 --gradient_accumulation_steps 8 \
    --per_device_train_batch_size 4 \
-   --deepspeed --actor_lora_dim 128 --enable_hybrid_engine --actor_gradient_checkpointing \
+   --deepspeed --actor_lora_dim 128 --enable_hybrid_engine --actor_gradient_checkpointing --disable_actor_dropout \
    --output_dir $OUTPUT &> $OUTPUT/training.log

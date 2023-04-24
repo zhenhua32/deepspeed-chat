@@ -97,7 +97,7 @@ def parse_args():
     )
     parser.add_argument("--weight_decay",
                         type=float,
-                        default=0.1,
+                        default=0.,
                         help="Weight decay to use.")
     # 默认只训练了一轮, 必须加大力度
     parser.add_argument("--num_train_epochs",
@@ -143,7 +143,10 @@ def parse_args():
     parser.add_argument('--gradient_checkpointing',
                         action='store_true',
                         help='Enable HF gradient checkpointing for model.')
-    # deepspeed features. 这个应该也可以用来减少显存
+    parser.add_argument('--disable_dropout',
+                        action='store_true',
+                        help='Disable the dropout of the model.')
+    # deepspeed features
     parser.add_argument('--offload',
                         action='store_true',
                         help='Enable ZeRO Offload techniques.')
@@ -213,8 +216,11 @@ def main():
                                               fast_tokenizer=True)
     tokenizer.pad_token = tokenizer.eos_token
 
-    model = create_hf_model(AutoModelForCausalLM, args.model_name_or_path,
-                            tokenizer, ds_config)
+    model = create_hf_model(AutoModelForCausalLM,
+                            args.model_name_or_path,
+                            tokenizer,
+                            ds_config,
+                            disable_dropout=args.disable_dropout)
 
     # 使用 lora
     if args.lora_dim > 0:
