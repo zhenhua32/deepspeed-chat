@@ -7,5 +7,5 @@
 # You can provide two models to compare the performance of the baseline and the finetuned model
 export CUDA_VISIBLE_DEVICES=0
 python prompt_eval.py \
-    --model_name_or_path_baseline XXX \
-    --model_name_or_path_finetune XXX
+    --model_name_or_path_baseline facebook/opt-1.3b \
+    --model_name_or_path_finetune /workspaces/deepspeed_chat/output/actor-models/1.3b

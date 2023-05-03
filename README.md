@@ -31,7 +31,6 @@ TODO: 第一步就和文档上的示例差的好远.
 目录是 `DeepSpeedExamples/applications/DeepSpeed-Chat/training/step1_supervised_finetuning`.
 
 ```bash
-
 cd /workspaces/deepspeed_chat/DeepSpeedExamples/applications/DeepSpeed-Chat/training/step1_supervised_finetuning
 # 训练
 bash training_scripts/single_gpu/run_1.3b.sh /workspaces/deepspeed_chat/output/actor-models/1.3b
@@ -49,5 +48,25 @@ Dahoas/full-hh-rlhf
 Dahoas/synthetic-instruct-gptj-pairwise
 yitingxie/rlhf-reward-datasets
 openai/webgpt_comparisons stanfordnlp/SHP
+```
+
+## 2. 微调奖励模型
+
+目录是 `DeepSpeedExamples/applications/DeepSpeed-Chat/training/step2_reward_model_finetuning`
+
+```bash
+cd /workspaces/deepspeed_chat/DeepSpeedExamples/applications/DeepSpeed-Chat/training/step2_reward_model_finetuning
+# 训练
+bash training_scripts/single_gpu/run_350m.sh /workspaces/deepspeed_chat/output/reward-models/350m
+```
+
+## 3. RLHF微调
+
+目录是 `DeepSpeedExamples/applications/DeepSpeed-Chat/training/step3_rlhf_finetuning`
+
+```bash
+cd /workspaces/deepspeed_chat/DeepSpeedExamples/applications/DeepSpeed-Chat/training/step3_rlhf_finetuning
+# 训练
+bash training_scripts/single_gpu/run_1.3b.sh /workspaces/deepspeed_chat/output/actor-models/1.3b /workspaces/deepspeed_chat/output/reward-models/350m '' '' /workspaces/deepspeed_chat/output/step3-models/1.3b
 ```
 
